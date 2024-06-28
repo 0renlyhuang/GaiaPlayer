@@ -1,0 +1,11 @@
+libunibreak:
+prefix=/opt/homebrew/Cellar/libunibreak/6.1
+exec_prefix=${prefix}
+libdir=/opt/homebrew/Cellar/libunibreak/6.1/lib
+includedir=${prefix}/include
+
+Name: libunibreak
+Description: Library to implement Unicode algorithms for line and word breaking
+Version: 6.1
+Libs: -L${libdir} -lunibreak
+Cflags: -I${includedir}
