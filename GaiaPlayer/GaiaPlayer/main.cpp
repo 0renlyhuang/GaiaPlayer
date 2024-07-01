@@ -87,6 +87,10 @@ int refreshThread (void *opaque) {
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/init/Init.h>
 #include <iostream>
+#include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/io/async/EventBase.h>
+
+#include "base/async/executors.hpp"
 
 folly::coro::Task<int> slow() {
   std::cout << "before sleep" << std::endl;
@@ -95,7 +99,16 @@ folly::coro::Task<int> slow() {
   co_return 1;
 }
 
+
 int main () {
+    const auto ui_eb = std::make_shared<folly::EventBase>();
+    const auto executors = std::make_unique<gaia::base::Executors>(ui_eb);
+    
+    
+    
+    
+    ui_eb->loopForever();
+    
     
     folly::coro::blockingWait(
           slow().scheduleOn(folly::getGlobalCPUExecutor().get()));
