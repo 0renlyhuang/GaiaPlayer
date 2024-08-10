@@ -26,6 +26,8 @@ public:
     
     std::shared_ptr<folly::IOExecutor> UI() const { return this->ui_executor_; }
     
+    std::shared_ptr<folly::CPUThreadPoolExecutor> Logic() const { return this->logic_executor_; }
+    
     
 private:
     std::shared_ptr<folly::IOExecutor> ui_executor_;
