@@ -29,6 +29,8 @@
 #include "engine/source/file_source.hpp"
 #include "base/async/executors.hpp"
 #include "engine/destination/sdl_dst.hpp"
+#include "common/perf/perf_tracker.hpp"
+#include "common/probe/media_probe.hpp"
 
 #include <type_traits>
 
@@ -58,7 +60,9 @@ static inline auto BuildEngineInjector(
                              di::bind<ConsumeDataSource>().to<ConsumeDataSource>().in(di::singleton),
                              di::bind<SDLVideoConsumer>().to<SDLVideoConsumer>().in(di::singleton),
                              di::bind<SDLAudioConsumer>().to<SDLAudioConsumer>().in(di::singleton),
-                             di::bind<EventCenter>().to<EventCenter>().in(di::singleton)
+                             di::bind<EventCenter>().to<EventCenter>().in(di::singleton),
+                             di::bind<PerfTracker>().to<PerfTracker>().in(di::singleton),
+                             di::bind<MediaProbe>().to<MediaProbe>().in(di::singleton)
                              );
 }
 

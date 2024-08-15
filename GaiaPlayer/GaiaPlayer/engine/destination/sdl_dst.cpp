@@ -315,9 +315,10 @@ const AudioParams& SDLDst::getAudioHwParamsRef() {
     return this->audio_hw_params_;
 }
 
-void SDLDst::onAttch(std::shared_ptr<EngineEnv> env, std::shared_ptr<base::Executors> executor) {
+void SDLDst::onAttch(std::shared_ptr<EngineEnv> env, std::shared_ptr<base::Executors> executor, std::shared_ptr<PerfTracker> perf_tracker) {
     this->env_ = env;
     this->executor_ = executor;
+    this->perf_tracker_ = perf_tracker;
 }
 
 
@@ -489,6 +490,7 @@ void SDLDst::showFrameImpl(DecodedFramePtr decoded_frame) {
     
     
     SDL_RenderPresent(this->renderer_);
+    this->perf_tracker_->trackPictureShow();
 }
 
 void SDLDst::showWnd() {

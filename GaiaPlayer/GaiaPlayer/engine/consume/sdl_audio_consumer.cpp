@@ -14,7 +14,7 @@
 namespace gaia::engine {
 
 
-SDLAudioConsumer::SDLAudioConsumer(std::shared_ptr<EngineEnv> env, std::shared_ptr<base::Executors> executor, std::shared_ptr<SDLDst> sdl_dst, std::shared_ptr<Clock> clock, std::shared_ptr<ConsumeDataSource> consume_data_source): env_(env), executor_(executor), sdl_dst_(sdl_dst), clock_(clock), data_source_(consume_data_source), audio_buf_rest_()  {
+SDLAudioConsumer::SDLAudioConsumer(std::shared_ptr<EngineEnv> env, std::shared_ptr<base::Executors> executor, std::shared_ptr<SDLDst> sdl_dst, std::shared_ptr<Clock> clock, std::shared_ptr<ConsumeDataSource> consume_data_source, std::shared_ptr<AudioDecoder> audio_decoder, std::shared_ptr<Demuxer> demuxer): env_(env), executor_(executor), sdl_dst_(sdl_dst), clock_(clock), data_source_(consume_data_source), audio_decoder_(audio_decoder), demuxer_(demuxer), audio_buf_rest_()  {
     
 }
 
@@ -40,12 +40,11 @@ base::ErrorMsgOpt SDLAudioConsumer::provideAudio(std::byte *dst, size_t sz, ISDL
         }
         
         
-        while (this->data_source_->getAudioQueueRef().empty()) {
-            // block to wait
-        }
+        const auto decoded_frame_opt = this->audio_decoder_->consumeFrame();
+        this->executor_->Logic()->add([this]{
+            this->demuxer_->resumeDemuxIfNeeded(this->env_->serial);
+        });
         
-        using namespace std::chrono_literals;
-        const auto decoded_frame_opt = this->data_source_->getAudioQueueRef().try_dequeue_for(5ms);  // TODO: add cancel logic
         
         if (!decoded_frame_opt.hasValue()) {
             return base::error("no audio buf after waiting");

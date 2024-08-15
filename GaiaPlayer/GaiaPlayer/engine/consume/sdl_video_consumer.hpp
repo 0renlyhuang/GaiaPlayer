@@ -17,6 +17,9 @@
 #include "base/time/time_unit.hpp"
 #include "engine/control/clock.hpp"
 #include "engine/destination/sdl_dst.hpp"
+#include "common/perf/perf_tracker.hpp"
+#include "engine/demux/demuxer.hpp"
+#include "base/observable/observable.hpp"
 
 #include <folly/experimental/coro/Task.h>
 
@@ -27,15 +30,15 @@ namespace gaia::engine {
 
 class SDLVideoConsumer {
 public:
-    SDLVideoConsumer(std::shared_ptr<EngineEnv> env, std::shared_ptr<ConsumeDataSource> consume_data_source, std::shared_ptr<EventCenter> event_center, std::shared_ptr<base::Executors> executor, std::shared_ptr<Clock> clock, std::shared_ptr<SDLDst> sdl_dst);
+    SDLVideoConsumer(std::shared_ptr<EngineEnv> env, std::shared_ptr<ConsumeDataSource> consume_data_source, std::shared_ptr<EventCenter> event_center, std::shared_ptr<base::Executors> executor, std::shared_ptr<Clock> clock, std::shared_ptr<SDLDst> sdl_dst, std::shared_ptr<PerfTracker> perf_tracker, std::shared_ptr<Demuxer> demuxer);
     ~SDLVideoConsumer();
     
 private:
     void onVideoFrameProduced();
     void onClockTick();
     
+    void checkFrame();
     void tryRefreshFrame();
-    void tryRefreshFrameImpl();
     std::optional<base::TimeUnit> refreshFrame();
     
     
@@ -56,8 +59,10 @@ private:
     std::shared_ptr<base::Executors> executor_;
     std::shared_ptr<Clock> clock_;
     std::shared_ptr<SDLDst> sdl_dst_;
+    std::shared_ptr<PerfTracker> perf_tracker_;
+    std::shared_ptr<Demuxer> demuxer_;
     
-    std::vector<folly::observer::CallbackHandle> callback_handlers_;
+    std::vector<base::SubscribeHandlerPtr> subscriptions_;
     
     std::optional<DecodedFramePtr> curr_decoded_frame_;
     std::optional<base::TimeUnit> curr_frame_display_ts_;

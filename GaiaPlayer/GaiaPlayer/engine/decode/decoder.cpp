@@ -50,8 +50,35 @@ base::ErrorMsgOpt Decoder::openStreams(AVFormatContext *p_fmt_ctx, std::shared_p
 }
 
 bool Decoder::isCacheEnough() {
-    return false;  // TODO
+    if (!this->audio_decoder_->isCacheEnough()) {
+        return false;
+    }
+    if (!this->video_decoder_->isCacheEnough()) {
+        return false;
+    }
+    
+    return true;
 }
+
+bool Decoder::isCacheInNeed() {
+    if (this->audio_decoder_->isCacheInNeed()) {
+        return true;
+    }
+    if (this->video_decoder_->isCacheInNeed()) {
+        return true;
+    }
+    
+    return false;
+}
+
+std::string Decoder::getCacheTrackInfo() {
+    using namespace std::chrono;
+    const auto v_cache_duraion = duration_cast<duration<double>>(this->video_decoder_->getDurationInQueue().value_or(base::TimeUnit(-1)));
+    const auto a_cache_duraion = duration_cast<duration<double>>(this->audio_decoder_->getDurationInQueue());
+    
+    return std::format("v:{}, a:{}", v_cache_duraion, a_cache_duraion);
+}
+
 
 base::ErrorMsgOpt Decoder::decode(PacketPtr pkt) {
     if (pkt->raw->stream_index == this->env_->streams->a_idx) {

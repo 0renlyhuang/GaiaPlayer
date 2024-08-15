@@ -58,8 +58,8 @@ folly::Expected<Streams, base::ErrorMsg> Demuxer::splitStreams(AVFormatContext *
 }
 
 
-Demuxer::Demuxer(std::shared_ptr<EngineEnv> env, std::shared_ptr<gaia::base::Executors> executor, std::shared_ptr<Decoder> decoder)
-    : env_(env), executor_(executor), decoder_(decoder), demux_cancel_source_(folly::CancellationSource()), is_eof_(false) {
+Demuxer::Demuxer(std::shared_ptr<EngineEnv> env, std::shared_ptr<gaia::base::Executors> executor, std::shared_ptr<Decoder> decoder, std::shared_ptr<PerfTracker> perf_tracker)
+    : env_(env), executor_(executor), decoder_(decoder), perf_tracker_(perf_tracker), demux_cancel_source_(folly::CancellationSource()), is_eof_(false) {
     
 }
 
@@ -71,12 +71,29 @@ base::ErrorMsgOpt Demuxer::openStreams(AVFormatContext *p_fmt_ctx, std::shared_p
 void Demuxer::startDemux(int32_t serial) {
     XLOG(DBG) << "Demuxer::startDemux";
 
+    this->is_demux_looping_ = true;
     const auto when_finished = folly::coro::co_withCancellation(this->demux_cancel_source_.getToken(), [this, serial]{
         return this->demuxLoop(serial);
     })()
         .scheduleOn(this->executor_->Logic().get())
         .start();
+}
+
+void Demuxer::resumeDemuxIfNeeded(int32_t serial) {
+    if (this->is_demux_looping_) {
+        return; // no need to resume
+    }
     
+    if (!this->decoder_->isCacheInNeed()) {
+        return;
+    }
+    
+    if (serial != this->env_->serial) {
+        return;
+    }
+    
+    this->perf_tracker_->trackStartProduce(this->decoder_->getCacheTrackInfo());
+    this->startDemux(serial);
 }
 
 folly::coro::Task<> Demuxer::demuxLoop(int32_t serial) {
@@ -85,19 +102,20 @@ folly::coro::Task<> Demuxer::demuxLoop(int32_t serial) {
     if (isCacheEnough) {
         XLOG(INFO) << "cache enough, stop demux";
         this->is_demux_looping_ = false;
+        this->perf_tracker_->trackPauseProduce(this->decoder_->getCacheTrackInfo());
         co_return;
     }
     
     if (serial != this->env_->serial) {
+        this->is_demux_looping_ = false;
         co_return;
     }
     
     if (this->is_eof_) {
+        this->is_demux_looping_ = false;
         co_return;
     }
     
-
-    this->is_demux_looping_ = true;
     const auto produce_result = this->produceOnce();
     if (produce_result.hasError()) {
         this->is_demux_looping_ = false;

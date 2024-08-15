@@ -25,7 +25,7 @@ extern "C" {
 
 namespace gaia::engine {
 
-VideoDecoder::VideoDecoder(std::shared_ptr<EngineEnv> env, std::shared_ptr<VideoUnifier> video_unifier, std::shared_ptr<EventCenter> event_center): BaseDecoder(), env_(env), video_unifier_(video_unifier), event_center_(event_center) {
+VideoDecoder::VideoDecoder(std::shared_ptr<EngineEnv> env, std::shared_ptr<VideoUnifier> video_unifier, std::shared_ptr<EventCenter> event_center, std::shared_ptr<MediaProbe> media_probe): BaseDecoder(), env_(env), video_unifier_(video_unifier), event_center_(event_center), media_probe_(media_probe) {
     
 }
 
@@ -75,6 +75,7 @@ base::ErrorMsgOpt VideoDecoder::decode(PacketPtr pkt) {
         }
 
         frame->raw->sample_aspect_ratio = av_guess_sample_aspect_ratio(this->env_->ctx, this->env_->streams->v_stream, frame->raw);
+        this->media_probe_->onVFrame(frame);
         
         const auto error = this->filterFrame(frame, pkt);
         if (error.has_value()) {
@@ -178,7 +179,46 @@ void VideoDecoder::updateLastFrameDuration(DecodedFramePtr last_frame, DecodedFr
     const auto duration = curr_pts - last_pts;
     XLOG(DBG, std::format("update last video frame duration, old:{}, new duration:{}", base::toSecStr(last_frame->duration), base::toSecStr(duration)));
     last_frame->duration = duration;
+}
+
+std::optional<base::TimeUnit> VideoDecoder::getDurationInQueue() {
+    if (this->queue_.empty()) {
+        return std::nullopt;
+    }
     
+    const auto first_pts_opt = this->queue_.front()->pts;
+    const auto last_pts_opt =  this->queue_.back()->pts;
+    
+    if (first_pts_opt.has_value() && last_pts_opt.has_value()) {
+        const auto first_pts = first_pts_opt.value();
+        const auto last_pts = last_pts_opt.value();
+        if (last_pts > first_pts) {
+            const auto duration = last_pts -  first_pts;
+            return duration;
+        }
+    }
+    
+    return std::nullopt;
+}
+
+bool VideoDecoder::isCacheEnough() {
+    const auto duration_in_queue = this->getDurationInQueue();
+    if (!duration_in_queue.has_value()) {
+        return false;
+    }
+    
+    using namespace std::chrono_literals;
+    return duration_in_queue.value() >= 10s;
+}
+
+bool VideoDecoder::isCacheInNeed() {
+    const auto duration_in_queue = this->getDurationInQueue();
+    if (!duration_in_queue.has_value()) {
+        return true;
+    }
+    
+    using namespace std::chrono_literals;
+    return duration_in_queue.value() <= 5s;
 }
 
 }

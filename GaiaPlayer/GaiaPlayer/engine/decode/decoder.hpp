@@ -44,6 +44,8 @@ public:
     base::ErrorMsgOpt openStreams(AVFormatContext *p_fmt_ctx, std::shared_ptr<Streams> streams);
     
     bool isCacheEnough();
+    bool isCacheInNeed();
+    std::string getCacheTrackInfo();
     
     base::ErrorMsgOpt decode(PacketPtr pkt);
     

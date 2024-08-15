@@ -14,6 +14,7 @@
 #include "base/async/executors.hpp"
 #include "engine/decode/decoder.hpp"
 #include "base/error/error_str.hpp"
+#include "common/perf/perf_tracker.hpp"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -38,12 +39,13 @@ class Demuxer: public folly::MoveOnly {
 public:
     static folly::Expected<Streams, base::ErrorMsg> splitStreams(AVFormatContext *p_fmt_ctx);
     
-    Demuxer(std::shared_ptr<EngineEnv> env, std::shared_ptr<gaia::base::Executors> executor, std::shared_ptr<Decoder> decoder);
+    Demuxer(std::shared_ptr<EngineEnv> env, std::shared_ptr<gaia::base::Executors> executor, std::shared_ptr<Decoder> decoder, std::shared_ptr<PerfTracker> perf_tracker);
     
     base::ErrorMsgOpt openStreams(AVFormatContext *p_fmt_ctx, std::shared_ptr<Streams> streams);
     
     void startDemux(int32_t serial);
     void pauseDemux();
+    void resumeDemuxIfNeeded(int32_t serial);
     
 private:
     folly::coro::Task<> demuxLoop(int32_t serial);
@@ -57,6 +59,7 @@ private:
     std::shared_ptr<EngineEnv> env_;
     std::shared_ptr<gaia::base::Executors> executor_;
     std::shared_ptr<Decoder> decoder_;
+    std::shared_ptr<PerfTracker> perf_tracker_;
     
     int32_t start_demux_serial_ = {};
     bool is_eof_;

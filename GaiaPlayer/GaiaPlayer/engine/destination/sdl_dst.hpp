@@ -18,6 +18,7 @@
 #include "engine/engine_env.hpp"
 #include "engine/decode/decoded_content.hpp"
 #include "base/async/executors.hpp"
+#include "common/perf/perf_tracker.hpp"
 
 extern "C" {
 #include <libavutil/dict.h>
@@ -74,7 +75,7 @@ public:
     
     void loopOnce();
     
-    void onAttch(std::shared_ptr<EngineEnv> env, std::shared_ptr<base::Executors> executor);
+    void onAttch(std::shared_ptr<EngineEnv> env, std::shared_ptr<base::Executors> executor, std::shared_ptr<PerfTracker> perf_tracker);
     
     
     std::optional<base::ErrorMsg> launchWnd();
@@ -103,6 +104,7 @@ private:
     
     std::shared_ptr<EngineEnv> env_;
     std::shared_ptr<base::Executors> executor_;
+    std::shared_ptr<PerfTracker> perf_tracker_;
     
     SDL_Window *window_ = nullptr;
     SDL_Renderer *renderer_ = nullptr;

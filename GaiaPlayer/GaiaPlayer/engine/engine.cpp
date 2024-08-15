@@ -84,7 +84,8 @@ void Engine::playImpl(std::string file) {
     env->max_frame_duration = (expected_ctx.value()->iformat->flags & AVFMT_TS_DISCONT) ? 10s : 3600s;
     
     this->sdl_video_consumer_ = this->injector_->create<std::shared_ptr<SDLVideoConsumer>>();
-    dst_->onAttch(env, executors_);
+    const auto perf_tracker = this->injector_->create<std::shared_ptr<PerfTracker>>();
+    dst_->onAttch(env, executors_, perf_tracker);
     
     
     const auto expected_streams = Demuxer::splitStreams(env->ctx);
@@ -117,6 +118,10 @@ void Engine::playImpl(std::string file) {
         return;
     }
     
+    const auto media_probe = this->injector_->create<std::shared_ptr<MediaProbe>>();
+    const auto audio_decoder = this->injector_->create<std::shared_ptr<AudioDecoder>>();
+    const auto video_decoder = this->injector_->create<std::shared_ptr<VideoDecoder>>();
+    media_probe->printMediaInfo(env->ctx, video_decoder->getCodecCtx(), audio_decoder->getCodecCtx());
     
     demuxer->startDemux(env->serial);
     

@@ -26,6 +26,7 @@ void Clock::onAudioClockPass(base::TimeUnit uint) {
     if (master_type_ == MasterType::kAudio) {
         this->ts_ += uint;
         this->pts_src_.setValue(this->ts_);
+        this->ts_src_.setValue(this->ts_);
     }
     
     

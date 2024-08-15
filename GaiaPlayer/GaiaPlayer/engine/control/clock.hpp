@@ -11,6 +11,7 @@
 #define clock_hpp
 
 #include "base/time/time_unit.hpp"
+#include "base/observable/observable.hpp"
 
 #include <folly/observer/SimpleObservable.h>
 
@@ -39,6 +40,7 @@ public:
     // debug
     void updateVideoClock(base::TimeUnit ts);
     
+    base::Observable<base::TimeUnit> ts_src_;
 private:
     MasterType master_type_;
     base::TimeUnit ts_;

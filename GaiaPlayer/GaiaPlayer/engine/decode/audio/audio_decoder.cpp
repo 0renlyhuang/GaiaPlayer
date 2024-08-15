@@ -18,8 +18,8 @@
 namespace gaia::engine {
 
 
-AudioDecoder::AudioDecoder(std::shared_ptr<EngineEnv> env, std::shared_ptr<AudioUnifier> audio_unifier, std::shared_ptr<SDLDst> sdl_dst)
-    : BaseDecoder(), env_(env), audio_unifier_(audio_unifier), sdl_dst_(sdl_dst) {
+AudioDecoder::AudioDecoder(std::shared_ptr<EngineEnv> env, std::shared_ptr<AudioUnifier> audio_unifier, std::shared_ptr<SDLDst> sdl_dst, std::shared_ptr<MediaProbe> media_probe)
+    : BaseDecoder(), env_(env), audio_unifier_(audio_unifier), sdl_dst_(sdl_dst), media_probe_(media_probe) {
 }
     
 std::optional<base::ErrorMsg> AudioDecoder::openConcreteStream(AVCodecContext *avctx, AVFormatContext *fmt_ctx, AVStream *stream) {
@@ -74,13 +74,36 @@ std::optional<base::ErrorMsg> AudioDecoder::openConcreteStream(AVCodecContext *a
     return std::nullopt;
 }
 
+base::TimeUnit AudioDecoder::getDurationInQueue() {
+    const auto duration_in_queue = base::TimeUnit(this->time_uint_in_queue_);
+    return duration_in_queue;
+}
+
 
 bool AudioDecoder::isCacheEnough() {
+    if (this->queue_.empty()) {
+        return false;
+    }
+    
+    using namespace std::chrono_literals;
+    const auto duration_in_queue = this->getDurationInQueue();
+    
+    if (duration_in_queue >= 10s) {
+        return true;
+    }
+    
     return false;
 }
 
 bool AudioDecoder::isCacheInNeed() {
-    return true;
+    if (this->queue_.empty()) {
+        return true;
+    }
+    
+    using namespace std::chrono_literals;
+    const auto duration_in_queue = base::TimeUnit(this->time_uint_in_queue_);
+    
+    return duration_in_queue <= 5s;
 }
 
 base::ErrorMsgOpt AudioDecoder::filterFrame(FramePtr frame, PacketPtr pkt) {
@@ -121,7 +144,7 @@ base::ErrorMsgOpt AudioDecoder::filterFrame(FramePtr frame, PacketPtr pkt) {
         const int serial = this->env_->serial;
         const auto duration = base::toTimeUnit(1, (AVRational){frame_unified->raw->nb_samples, frame_unified->raw->sample_rate});
         
-        
+        this->time_uint_in_queue_ += duration.count();
         this->queue_.enqueue(DecodedFrame{ .frame=frame_unified, .source_pkt=pkt, .pts=pts, .pos=pos, .serial=serial, .duration=duration });
     }
     
@@ -163,6 +186,8 @@ base::ErrorMsgOpt AudioDecoder::decode(PacketPtr pkt) {
             }
         }
         
+        this->media_probe_->onAFrame(frame);
+        
         const auto error = this->filterFrame(frame, pkt);
         if (error.has_value()) {
             continue;
@@ -172,10 +197,22 @@ base::ErrorMsgOpt AudioDecoder::decode(PacketPtr pkt) {
     
     return base::noError;
 }
+
+
+folly::Optional<DecodedFrame> AudioDecoder::consumeFrame() {
+    // will call from other thread
+    using namespace std::chrono_literals;
+    const auto decoded_frame_opt = this->queue_.try_dequeue_for(5ms);  // TODO: add cancel logic
     
+    if (decoded_frame_opt.hasValue()) {
+        this->time_uint_in_queue_ -= decoded_frame_opt->duration.count();
+    }
+    
+    return decoded_frame_opt;
+}
 
-
-
-
+AVCodecContext *AudioDecoder::getCodecCtx() {
+    return this->avctx_;
+}
 
 }

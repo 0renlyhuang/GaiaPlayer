@@ -16,6 +16,8 @@
 #include "engine/control/clock.hpp"
 #include "base/buf/buf.hpp"
 #include "engine/consume/consume_data_source.hpp"
+#include "engine/decode/audio/audio_decoder.hpp"
+#include "engine/demux/demuxer.hpp"
 
 #include <folly/CancellationToken.h>
 
@@ -25,7 +27,7 @@ namespace gaia::engine {
 
 class SDLAudioConsumer: public ISDLDstProvider {
 public:
-    SDLAudioConsumer(std::shared_ptr<EngineEnv> env, std::shared_ptr<base::Executors> executor, std::shared_ptr<SDLDst> sdl_dst, std::shared_ptr<Clock> clock, std::shared_ptr<ConsumeDataSource> consume_data_source);
+    SDLAudioConsumer(std::shared_ptr<EngineEnv> env, std::shared_ptr<base::Executors> executor, std::shared_ptr<SDLDst> sdl_dst, std::shared_ptr<Clock> clock, std::shared_ptr<ConsumeDataSource> consume_data_source, std::shared_ptr<AudioDecoder> audio_decoder, std::shared_ptr<Demuxer> demuxer);
     
     base::ErrorMsgOpt consumeAudioBuf(size_t sz, std::byte *dst);
     
@@ -42,6 +44,8 @@ private:
     std::shared_ptr<SDLDst> sdl_dst_;
     std::shared_ptr<Clock> clock_;
     std::shared_ptr<ConsumeDataSource> data_source_;
+    std::shared_ptr<AudioDecoder> audio_decoder_;
+    std::shared_ptr<Demuxer> demuxer_;
     
     std::optional<AudioParams> audio_src_params_;
     SwrContext *swr_ctx_ = nullptr;

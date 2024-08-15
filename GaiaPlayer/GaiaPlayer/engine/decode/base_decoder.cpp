@@ -90,6 +90,10 @@ std::optional<base::ErrorMsg> BaseDecoder::openStream(AVFormatContext *fmt_ctx, 
     return std::nullopt;
 }
 
+AVCodecContext *BaseDecoder::getCodecCtx() {
+    return this->avctx_;
+}
+
 
 //void BaseDecoder::pauseDecode() {
 //    if (!this->is_decode_looping_) {

@@ -49,7 +49,7 @@ public:
     
     virtual base::ErrorMsgOpt decode(PacketPtr pkt) = 0;
     
-    
+    AVCodecContext *getCodecCtx();
     
 protected:
     AVCodecContext *avctx_;

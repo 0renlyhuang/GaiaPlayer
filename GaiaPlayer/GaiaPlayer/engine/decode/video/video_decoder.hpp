@@ -15,6 +15,7 @@
 #include "engine/decode/decoded_content.hpp"
 #include "engine/decorate/video_unifier.hpp"
 #include "common/event/event_center.hpp"
+#include "common/probe/media_probe.hpp"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -31,7 +32,7 @@ namespace gaia::engine {
 class VideoDecoder: public BaseDecoder {
     friend class ConsumeDataSource;
 public:
-    VideoDecoder(std::shared_ptr<EngineEnv> env, std::shared_ptr<VideoUnifier> video_unifier, std::shared_ptr<EventCenter> event_center);
+    VideoDecoder(std::shared_ptr<EngineEnv> env, std::shared_ptr<VideoUnifier> video_unifier, std::shared_ptr<EventCenter> event_center, std::shared_ptr<MediaProbe> media_probe);
     ~VideoDecoder() override = default;
     
 
@@ -39,17 +40,20 @@ public:
     
     base::ErrorMsgOpt decode(PacketPtr pkt) override;
     
-    bool isCacheEnough() override { return false; }
-    bool isCacheInNeed() override { return true; }
-    
+    bool isCacheEnough() override;
+    bool isCacheInNeed() override;
+    std::optional<base::TimeUnit> getDurationInQueue();
     
 private:
     void updateLastFrameDuration(DecodedFramePtr last_frame, DecodedFramePtr curr_frame);
     base::ErrorMsgOpt filterFrame(FramePtr frame, PacketPtr pkt);
     
+    
+    
     std::shared_ptr<EngineEnv> env_;
     std::shared_ptr<VideoUnifier> video_unifier_;
     std::shared_ptr<EventCenter> event_center_;
+    std::shared_ptr<MediaProbe> media_probe_;
     
     std::optional<DecodedFramePtr> last_decoded_frame_;
     std::queue<DecodedFramePtr> queue_;
